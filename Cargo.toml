@@ -10,3 +10,11 @@ tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 http-body-util = "0.1.0"
+bson = "2.9.0"
+dotenv = "0.15.0"
+mongodb = "2.8.0"
+futures-io = "0.3.21"
+futures-core = "0.3.14"
+futures-util = { version = "0.3.14", features = ["io"] }
+futures-executor = "0.3.14"
+futures = "0.3"
