@@ -16,60 +16,9 @@ use serde_json::json;
 use serde::{de, Deserialize, Deserializer};
 
 // To get Params
-use std::error::Error;
+// use std::error::Error;
 use std::{fmt, str::FromStr};
-//-----------------------------------------------------------------------------------------------------------------------
-use mongodb::{bson::doc, bson::Document, options::ClientOptions, Client};
-
-// use mongodb::{Client, options::ClientOptions, options::FindOptions};
-// use mongodb::bson::{doc, Document};
-use serde::Serialize;
-#[derive(Serialize, Deserialize, Debug)]
-struct Err {}
-impl From<mongodb::error::Error> for Err {
-    fn from(_error: mongodb::error::Error) -> Self {
-        Err {}
-    }
-}
-
-#[allow(dead_code)]
-type DatabaseResult<T> = std::result::Result<T, Err>;
-
-async fn get_list() -> Result<Vec<Document>, Box<dyn Error>> {
-    let connection_string = std::env::var("MONGODB_CONNECTION_STRING").expect("MONGODB_CONNECTION_STRING must be set.");
-    let database_name = std::env::var("MONGODB_DATABASE_NAME").expect("MONGODB_DATABASE_NAME must be set.");
-    let collection_name = std::env::var("MONGODB_COLLECTION_NAME").expect("MONGODB_COLLECTION_NAME must be set.");
-
-    let client_options = ClientOptions::parse(
-        &connection_string,
-        )
-        .await?;
-    let client = Client::with_options(client_options)?;
-    let database = client.database(&database_name);
-
-    for collection_name in database.list_collection_names(None).await? {
-        println!("{}", collection_name);
-        //let collection = database.collection::<Document>(&collection_name);
-    }
-
-    let nontyped_collection = database.collection::<Document>(&collection_name);
-
-    use futures::stream::TryStreamExt;
-
-    let mut cursor = nontyped_collection
-        .find(None, None)
-        .await
-        .expect("error occured");
-    let mut docs = Vec::new();
-
-    while let Some(result) = cursor.try_next().await.unwrap() {
-        docs.push(result)
-    }
-
-    Ok(docs)
-}
-
-//-----------------------------------------------------------------------------------------------------------------------------------------------
+pub mod database;
 
 #[tokio::main]
 async fn main() {
@@ -129,17 +78,10 @@ async fn handler_root() -> Html<&'static str> {
     }
 ]
 */
-// struct ListStruct {
-//     name: String,
-//     created_date: String,
-//     updated_date: String,
-//     _id: String, // underscore in cosmos, not underscore returned to client
-// }
-
 async fn get_lists() -> Result<impl IntoResponse, StatusCode> {
     println!("get_lists");
 
-    let data = get_list().await.unwrap();
+    let data = database::get_list().await.unwrap();
 
     Ok(Json(data))
 }
@@ -157,7 +99,7 @@ async fn get_lists() -> Result<impl IntoResponse, StatusCode> {
 
 async fn get_lists_by_id(
     Query(params): Query<Params>,
-    Path(id): Path<i8>,
+    Path(id): Path<String>,
 ) -> Result<impl IntoResponse, StatusCode> {
     println!("get_lists_by_id: {}", id);
     println!("get_lists_by_id: {:?}", params);
