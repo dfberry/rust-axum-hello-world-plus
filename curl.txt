@@ -5,3 +5,5 @@ GET http://localhost:3000/lists/:id
 curl -X "POST" http://localhost:3000/lists 
 
 curl -X POST -H "Content-Type: application/json" -d '{"name":"test1"}' http://localhost:3000/lists
+
+curl -X DELETE -H "Content-Type: application/json" http://localhost:3000/lists/65e0993d81f2e3d6f63fe9c2

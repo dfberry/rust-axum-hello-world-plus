@@ -1,5 +1,5 @@
 //use bson::Bson;
-use mongodb::{bson::doc, /*bson::oid::ObjectId,*/ bson::Document, options::ClientOptions, Client};
+use mongodb::{bson::doc, /*bson::oid::ObjectId,*/ bson::Document, options::ClientOptions, Client, results::DeleteResult};
 use serde::Serialize;
 use std::error::Error;
 use std::str::FromStr;
@@ -105,4 +105,13 @@ pub async fn add_list(name: String) -> Result<String, Box<dyn Error>> {
     let insert_one_result = collection.insert_one(doc, None).await?;
 
     Ok(insert_one_result.inserted_id.to_string())
+}
+pub async fn delete_list_by_id(id_str: String) -> Result<DeleteResult, Box<dyn Error>> {
+    let collection = get_collection(PARENT_COLLECTION.to_string()).await?;
+    let id = mongodb::bson::oid::ObjectId::from_str(&id_str).unwrap();
+    let filter = doc! {
+        "_id": id,
+    };
+    let delete_result = collection.delete_one(filter, None).await?;
+    Ok(delete_result)
 }
