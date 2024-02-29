@@ -1,0 +1,7 @@
+GET http://localhost:3000/
+GET http://localhost:3000/lists
+GET http://localhost:3000/lists/:id
+
+curl -X "POST" http://localhost:3000/lists 
+
+curl -X POST -H "Content-Type: application/json" -d '{"name":"test1"}' http://localhost:3000/lists

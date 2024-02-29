@@ -4,13 +4,10 @@ use axum::{
     response::Html,
     response::IntoResponse,
     response::Json,
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use dotenv::dotenv;
-
-// JSON
-use serde_json::json;
 
 // Serde - params
 use serde::{de, Deserialize, Deserializer};
@@ -28,7 +25,9 @@ async fn main() {
     let app = Router::new()
         .route("/", get(handler_root))
         .route("/lists", get(get_lists))
+        .route("/lists", post(add_list))
         .route("/lists/:id", get(get_lists_by_id));
+
 
     // run it
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -45,6 +44,7 @@ struct Params {
     foo: Option<i32>,
     bar: Option<String>,
 }
+
 /// Serde deserialization decorator to map empty Strings to None,
 fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
 where
@@ -104,18 +104,31 @@ async fn get_lists_by_id(
     println!("get_lists_by_id: {}", id);
     println!("get_lists_by_id: {:?}", params);
 
-    let data = json!({
-        "name": "John Doe",
-        "age": 43,
-        "phones": [
-            "+44 1234567",
-            "+44 2345678"
-        ]
-    });
-
-    println!("{}", data.to_string());
+    let data = database::get_list_by_id(id).await.unwrap();
 
     Ok(Json(data))
+}
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct ListNew {
+    #[serde(default, deserialize_with = "empty_string_as_none")]
+    name: Option<String>,
+}
+async fn add_list(list_new: Json<ListNew>
+) -> Result<impl IntoResponse, StatusCode> {
+    println!("add_list: {:?}", list_new);
+
+    let name = &list_new.name;
+    print!("name: {:?}", name);
+
+    if name.is_none() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    print!("name: {:?}", name.clone().unwrap());
+
+    let id: String = database::add_list(name.clone().unwrap()).await.unwrap();
+
+    Ok(Json(id))
 }
 
 /*

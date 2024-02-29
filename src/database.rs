@@ -4,14 +4,51 @@ use serde::Serialize;
 use std::error::Error;
 use std::str::FromStr;
 use tokio::time::{sleep, Duration};
+use futures::stream::TryStreamExt;
+use chrono::{Utc};
+
+
+const PARENT_COLLECTION: &str = "TodoList";
+
+fn get_env_var() -> (String, String, String) {
+    let connection_string =
+        std::env::var("MONGODB_CONNECTION_STRING").expect("MONGODB_CONNECTION_STRING must be set.");
+    let database_name =
+        std::env::var("MONGODB_DATABASE_NAME").expect("MONGODB_DATABASE_NAME must be set.");
+    let collection_name =
+        std::env::var("MONGODB_COLLECTION_NAME").expect("MONGODB_COLLECTION_NAME must be set.");
+    (connection_string, database_name, collection_name)
+}
+type DatabaseResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+async fn get_database () -> Result<mongodb::Database, Box<dyn Error>> {
+    let (connection_string, database_name, _collection_name) = get_env_var();
+    let client_options = ClientOptions::parse(&connection_string).await?;
+    let client = Client::with_options(client_options)?;
+    let database = client.database(&database_name);
+    Ok(database)
+}
+pub async fn get_collections () -> DatabaseResult<Vec<String>> {
+    let database = get_database().await?;
+
+    let mut collections = Vec::new();
+    for collection_name in database.list_collection_names(None).await? {
+        collections.push(collection_name);
+    }
+    Ok(collections)
+}
+async fn get_collection (collection_name: String)-> Result<mongodb::Collection<Document>, Box<dyn Error>> {
+
+    let database = get_database().await?;
+    let collection = database.collection(&collection_name);
+    Ok(collection)
+}
+
 pub async fn get_async_hello() -> String {
     // simulate some async operation
     sleep(Duration::from_secs(2)).await;
     "Hello from Rust!".to_string()
 }
-
-// use mongodb::{Client, options::ClientOptions, options::FindOptions};
-// use mongodb::bson::{doc, Document};
 
 #[derive(Serialize, Debug)]
 struct Err {}
@@ -21,31 +58,11 @@ impl From<mongodb::error::Error> for Err {
     }
 }
 
-#[allow(dead_code)]
-type DatabaseResult<T> = std::result::Result<T, Err>;
-
 pub async fn get_list() -> Result<Vec<Document>, Box<dyn Error>> {
-    let connection_string =
-        std::env::var("MONGODB_CONNECTION_STRING").expect("MONGODB_CONNECTION_STRING must be set.");
-    let database_name =
-        std::env::var("MONGODB_DATABASE_NAME").expect("MONGODB_DATABASE_NAME must be set.");
-    let collection_name =
-        std::env::var("MONGODB_COLLECTION_NAME").expect("MONGODB_COLLECTION_NAME must be set.");
 
-    let client_options = ClientOptions::parse(&connection_string).await?;
-    let client = Client::with_options(client_options)?;
-    let database = client.database(&database_name);
+    let collection = get_collection(PARENT_COLLECTION.to_string()).await?;
 
-    for collection_name in database.list_collection_names(None).await? {
-        println!("{}", collection_name);
-        //let collection = database.collection::<Document>(&collection_name);
-    }
-
-    let nontyped_collection = database.collection::<Document>(&collection_name);
-
-    use futures::stream::TryStreamExt;
-
-    let mut cursor = nontyped_collection
+    let mut cursor = collection
         .find(None, None)
         .await
         .expect("error occured");
@@ -58,30 +75,11 @@ pub async fn get_list() -> Result<Vec<Document>, Box<dyn Error>> {
     Ok(docs)
 }
 pub async fn get_list_by_id(id_str: String) -> Result<Vec<Document>, Box<dyn Error>> {
-    let connection_string =
-        std::env::var("MONGODB_CONNECTION_STRING").expect("MONGODB_CONNECTION_STRING must be set.");
-    let database_name =
-        std::env::var("MONGODB_DATABASE_NAME").expect("MONGODB_DATABASE_NAME must be set.");
-    let collection_name =
-        std::env::var("MONGODB_COLLECTION_NAME").expect("MONGODB_COLLECTION_NAME must be set.");
-
-    let client_options = ClientOptions::parse(&connection_string).await?;
-    let client = Client::with_options(client_options)?;
-    let database = client.database(&database_name);
-
-    for collection_name in database.list_collection_names(None).await? {
-        println!("{}", collection_name);
-        //let collection = database.collection::<Document>(&collection_name);
-    }
-
-    let nontyped_collection = database.collection::<Document>(&collection_name);
-
-    use futures::stream::TryStreamExt;
-
+    let collection = get_collection(PARENT_COLLECTION.to_string()).await?;
     let filter = doc! {
         "_id": mongodb::bson::oid::ObjectId::from_str(&id_str).unwrap()
     };
-    let mut cursor = nontyped_collection
+    let mut cursor = collection
         .find(Some(filter), None)
         .await
         .expect("error occured");
@@ -92,4 +90,19 @@ pub async fn get_list_by_id(id_str: String) -> Result<Vec<Document>, Box<dyn Err
     }
 
     Ok(docs)
+}
+pub async fn add_list(name: String) -> Result<String, Box<dyn Error>> {
+    let collection = get_collection(PARENT_COLLECTION.to_string()).await?;
+    
+    let utc_datetime_now:String = Utc::now().to_string();
+
+    let doc = doc! {
+        "name": name,
+        "createdDate": &utc_datetime_now,
+        "updatedDate": &utc_datetime_now,
+    };
+
+    let insert_one_result = collection.insert_one(doc, None).await?;
+
+    Ok(insert_one_result.inserted_id.to_string())
 }
