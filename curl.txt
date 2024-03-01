@@ -4,6 +4,9 @@ GET http://localhost:3000/lists/:id
 
 curl -X "POST" http://localhost:3000/lists 
 
-curl -X POST -H "Content-Type: application/json" -d '{"name":"test1"}' http://localhost:3000/lists
 
-curl -X DELETE -H "Content-Type: application/json" http://localhost:3000/lists/65e0993d81f2e3d6f63fe9c2
+curl -X POST -H "Content-Type: application/json" -d '{"name":"test2"}' http://localhost:3000/lists
+
+curl -X PUT -H "Content-Type: application/json" -d '{"name":"test2-updated"}' http://localhost:3000/lists/65e0f631697c4a6f13e0e0c1
+
+curl -X DELETE -H "Content-Type: application/json" http://localhost:3000/lists/65e0f644697c4a6f13e0e0c3
